@@ -1,5 +1,3 @@
-'use strict';
-
 // Import required modules
 import fs from 'fs'; // File system module for reading and writing files
 import http from 'http'; // HTTP module for creating an HTTP server
@@ -94,31 +92,42 @@ function handleGetRequest(req, res, parsedUrl) {
 // Function to handle POST requests
 function handlePostRequest(req, res, parsedUrl) {
     if (parsedUrl.pathname === '/pets') {
-        // Initialize a variable to collect the request body data
         let requestBody = '';
 
-        // Listen for data chunks in the request body
         req.on('data', function(chunk) {
-            // Collect and concatenate the data chunks
+            // Collect the request body data
             requestBody += chunk;
         });
 
-        // Once all data is received, process it
         req.on('end', function() {
             try {
                 // Parse the request body as JSON
                 const newPet = JSON.parse(requestBody);
 
-                // Add the new pet to the existing pets array
-                pets.push(newPet);
+                // Validate the request body
+                if (
+                    newPet.hasOwnProperty('name') &&
+                    newPet.hasOwnProperty('kind') &&
+                    newPet.hasOwnProperty('age') &&
+                    typeof newPet.age === 'number' &&
+                    Number.isInteger(newPet.age)
+                ) {
+                    // Add the new pet to the existing pets array
+                    pets.push(newPet);
 
-                // Write the updated pets array back to the JSON file
-                fs.writeFileSync(petsPath, JSON.stringify(pets, null, 2), 'utf8');
+                    // Write the updated pets array back to the JSON file
+                    fs.writeFileSync(petsPath, JSON.stringify(pets, null, 2), 'utf8');
 
-                // Respond with a 201 Created status and the added pet
-                res.statusCode = 201;
-                res.setHeader('Content-Type', 'application/json');
-                res.end(JSON.stringify(newPet));
+                    // Respond with a 201 Created status and the added pet
+                    res.statusCode = 201;
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify(newPet));
+                } else {
+                    // Invalid request body, return a 400 Bad Request response
+                    res.statusCode = 400;
+                    res.setHeader('Content-Type', 'text/plain');
+                    res.end('Bad Request: Invalid request body');
+                }
             } catch (error) {
                 // Handle JSON parsing or file writing errors
                 res.statusCode = 400;
@@ -127,7 +136,6 @@ function handlePostRequest(req, res, parsedUrl) {
             }
         });
     } else {
-        // Requested URL path is not '/pets', return a 404 response
         res.statusCode = 404;
         res.setHeader('Content-Type', 'text/plain');
         res.end('Not Found');
