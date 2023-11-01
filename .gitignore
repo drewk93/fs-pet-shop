@@ -1,3 +1,4 @@
 node_modules
 ./ node_modules
-./ solve.js
+
+1-fs/solve.js
