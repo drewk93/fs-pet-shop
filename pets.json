@@ -1,1 +1,17 @@
-[{"age":7,"kind":"dog","name":"fido"},{"age":5,"kind":"snake","name":"Buttons"}]
+[
+  {
+    "age": 7,
+    "kind": "dog",
+    "name": "fido"
+  },
+  {
+    "age": 5,
+    "kind": "snake",
+    "name": "Buttons"
+  },
+  {
+    "name": "Batman",
+    "kind": "Tarantula",
+    "age": 1
+  }
+]
