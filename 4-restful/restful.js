@@ -2,7 +2,6 @@
 
 // nodemon restful.js
 // Core Module
-// import fs from 'fs'; // File System Module
 import express from 'express'; // Express Module
 const app = express(); // Server instance start
 app.use(express.json()); // express module
@@ -20,25 +19,49 @@ const pool = new Pool ({
     port: "5432"
 })
 
-// File Path
-// const petsPath = '../pets.json' // define path to pets;
+app.use(express.static('public'))
 
-// async function importPets() { 
-//     try {
-//         const data = fs.readFileSync(petsPath, 'utf-8'); // grab the pets.json file and utilize FS readfile function to parse it. 
-//         return JSON.parse(data) // convert from JSON data
-//     } catch (err) {
-//         console.error(err.message) // Log error message to console
-//         return [];
-//     }
-// }
+const createBasicAuthMiddleware = (expectedUsername, expectedPassword) => {
+    return (req, res, next) => {
+      // Check if the request method is POST, PUT, PATCH, or DELETE
+      const isRestrictedMethod = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method);
+  
+      // Only apply authentication for restricted methods
+      if (isRestrictedMethod) {
+        const authHeader = req.headers.authorization;
+  
+        if (!authHeader || !authHeader.startsWith('Basic ')) {
+          // Unauthorized if no or invalid Authorization header
+          res.status(401).header('WWW-Authenticate', 'Basic realm="Required"').send('Unauthorized');
+          return;
+        }
+  
+        const base64Credentials = authHeader.split(' ')[1];
+        const credentials = Buffer.from(base64Credentials, 'base64').toString('utf-8').split(':');
+        const providedUsername = credentials[0];
+        const providedPassword = credentials[1];
+  
+        // Check if the provided username and password match the expected values
+        if (providedUsername === expectedUsername && providedPassword === expectedPassword) {
+          // Authorized
+          next();
+        } else {
+          // Unauthorized if incorrect credentials
+          res.status(401).header('WWW-Authenticate', 'Basic realm="Required"').send('Unauthorized');
+        }
+      } else {
+        // If the method is not restricted, allow the request to proceed without authentication
+        next();
+      }
+    };
+  };
+  
+  // Apply the basicAuthMiddleware to restricted HTTP methods with the expected username and password
+  app.use(createBasicAuthMiddleware('admin', 'meowmix'));
+
 //  Routes 
 async function routes() {
     console.log(`---ROUTES---`) // Console log that routes is executed properly
-
-    // let pets = await importPets(); // Import read functionality
-
-
     // nodemon restful.js
     // Get All
     app.get('/pets', async (req, res, next) => {
@@ -58,7 +81,8 @@ async function routes() {
           if (result.rows.length === 0) {
             res.status(404).send('NOT FOUND'); // 404 for resource not found
           } else {
-            res.status(200).json(result.rows[0]); // Respond with the first row as JSON
+            res.status(200)
+            res.json(result.rows[0]); // Respond with the first row as JSON
           }
         } catch (err) {
           next(err); // Send error to error handling middleware
@@ -90,12 +114,12 @@ app.post('/pets', async (req,res, next) => {
 // // Patch One 
 
 app.patch('/pets/:id', async (req, res, next) => {
-    const id= parseInt(req.params.id) // target index in the request path
+    const id= parseInt(req.params.id) // target id in the request path
     
     try {
         const petResult = await pool.query('SELECT * FROM pets WHERE id = $1', [id]);
             
-        if (petResult.rowCount === 0) { // If there is no pets instance, index is not a number, index is less than zero, index is greater than pets array.length...
+        if (petResult.rowCount === 0) { 
             const error = Error('Pet is not available') // Error message
             error.status = 404; // Not found
             throw error; // throw error to catch
@@ -129,7 +153,7 @@ app.patch('/pets/:id', async (req, res, next) => {
 // // Delete One
 
 app.delete('/pets/:id', async(req, res, next) => {
-    const id = parseInt(req.params.id) // target index in the request path
+    const id = parseInt(req.params.id) // target id in the request path
     try {
         const petResult = await pool.query('SELECT * FROM pets WHERE id = $1', [id])
         if(petResult.rowCount === 0) {  
